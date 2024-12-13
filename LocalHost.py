@@ -2,8 +2,8 @@ import network
 import espnow
 import ubinascii
 from gpio_lcd import GpioLcd
-from time import sleep, ticks_ms, ticks_diff
-from machine import Pin, WDT, Timer, UART, reset, deepsleep, I2C
+from time import sleep
+from machine import Pin, Timer, UART, reset, deepsleep, I2C
 import gc
 from gps_simple import GPS_SIMPLE
 import esp32
@@ -77,9 +77,12 @@ def sleep_bish(obj):
 sleep(1)
 if acceleration.x > .2 or acceleration.y > .2:
     print(acceleration.x, acceleration.y)
+    lcd.move_to (0, 0)
+    lcd.putstr("Waking up...")
     print("waking")
 else:
     print(acceleration.x, acceleration.y)
+    lcd.move_to (0, 0)
     print("going back to sleep")
     deepsleep(20000)
     
@@ -94,36 +97,42 @@ while True:
             set_color(100, 0, 0)
             sleep(1)
             if acceleration.x <= .1 and acceleration.x >= -.1:
-                set_color(255, 0, 0)
+                set_color(200, 0, 0)
                 park_accel = 1
         if acceleration.x > .5 or acceleration.x < -.5:
             set_color(0, 0, 0)
             park_accel = None
         
-        gps_data = get_gps_data()   # Opretter lat, lon og course som tuple
+        gps_data = get_gps_data()   # Opretter lat, lon, course og speed som tuple
         print(gps_data)
         print(round(acceleration.x,2))
+        print(gc.mem_free())
         
         if lcd_display == 0:
             if gps_data != None and gps_data != False:   # Viser nuværende lat, lon, course og speed på LCD-skærm
                 lcd.clear()
                 lcd.move_to (0, 0)
-                lcd.putstr(f"Lat: {str(gps_data[0])}")
+                lcd.putstr("Latitude:")
                 lcd.move_to (0, 1)
-                lcd.putstr(f"Lon: {str(gps_data[1])}")
+                lcd.putstr(str(gps_data[0]))
+                lcd.move_to (11, 0)
+                lcd.putstr("Longitude:")
+                lcd.move_to (11, 1)
+                lcd.putstr(str(gps_data[1]))
                 lcd.move_to (0, 2)
                 lcd.putstr(f"km/t: {str(round(gps_data[3],2))}")
                 lcd.move_to (11, 2)
                 lcd.putstr(f"Dir: {str(round(gps_data[2],1))}")
+                
             else:
                 lcd.clear()
                 lcd.move_to (0, 0)
                 lcd.putstr("GPS Connecting...")
                 
         if lcd_display == 50:
-            lcd.clear()
-            lcd.move_to (0, 0)
-            lcd.putstr("TEST")
+                lcd.clear()
+                lcd.move_to (0, 0)
+                lcd.putstr("177013")
             
         lcd_display += 1
             
@@ -143,12 +152,12 @@ while True:
             lcd.move_to (1,0)
             lcd.putstr(current_data)
             
-        if acceleration.x <= 0.1 and acceleration.x >= -0.1 and parked != True:   # Tjekker om cyklen står stille
+        if acceleration.x <= 0.1 and acceleration.x >= -0.1 and parked != True:             # Tjekker om cyklen står stille
             timer_deepsleep.init(period=180000, mode=Timer.ONE_SHOT, callback=sleep_bish)   # Starter timer til deepsleep
-            parked = True
+            parked = True                                                                   # Fortæller programmet at cyklen står stille, så den ikke genstarter deepsleep-timer
         if acceleration.x < -0.1 or acceleration.x > 0.1:
-            timer_deepsleep.deinit()
-            parked = False
+            timer_deepsleep.deinit()                       m                                # Slukker timer til deepsleep
+            parked = False                                                                  # Fortæller programmet at cyklen ikke længere står stille
         
         sleep(.1)
     
