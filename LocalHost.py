@@ -52,7 +52,7 @@ timer_deepsleep = Timer(0)         # Opretter Timer objekt
 
 ### Definere funktioner
     
-def get_gps_data():     # Funktion til at få lat, lon og course fra gps
+def get_gps_data():             # Funktion til at få lat, lon og course fra gps
     lat = lon = course = None
     
     if gps.receive_nmea_data():
@@ -67,12 +67,12 @@ def get_gps_data():     # Funktion til at få lat, lon og course fra gps
     else:
         return False
     
-def set_color(r, g, b):
+def set_color(r, g, b):         # Sætter farve på neopixel ring
     for i in range(n):
         np[i] = (r, g, b)
     np.write()
     
-def sleep_bish(obj):
+def sleep_bish(obj):            # Slukker alt og går i 20 sekunders deepsleep
     print("sleeping, bish!")
     set_color(0, 0, 0)
     lcd.clear()
@@ -81,19 +81,19 @@ def sleep_bish(obj):
 
 ### Programmer
 
-sleep(1)
-if acceleration.x > .2 or acceleration.y > .2:
+sleep(1)                                             # Buffer ved start af tur
+if acceleration.x > .2 or acceleration.y > .2:       # Tjekker om cyklen er i bevægelse
     print(acceleration.x, acceleration.y)
     lcd.move_to (0, 0)
     lcd.putstr("Waking up...")
-    e.send("Wake up! ajkdsladhwoiahjdal Make Up!")
+    e.send("Wake up! ajkdsladhwoiahjdal Make Up!")   # Sender besked til pulsmåler og gyroskop for at vække dem
     print("Waking up...")
 else:
     print(acceleration.x, acceleration.y)
     lcd.move_to (0, 0)
     print("Going back to sleep...")
-    e.send("sleep, bish!")
-    deepsleep(20000)
+    e.send("sleep, bish!")                           # Sender besked til pulsmåler og gyroskop, så de går tilbage i deepsleep
+    deepsleep(20000)                                 # Går i deepsleep i 20 sekunder
 
 while True:
     try:
@@ -115,47 +115,44 @@ while True:
         print(round(acceleration.x,2))
         print(gc.mem_free())
         
-        host, msg = e.recv()                             # Opretter MAC-adresse fra sender som host og besked som msg
+        host, msg = e.recv()                                       # Opretter MAC-adresse fra sender som host og besked som msg
         
-        if msg and host == b'\xc8.\x18\x15<\xfc':        # Tager besked, hvis den kommer fra pulsmåler
+        if msg and host == b'\xc8.\x18\x15<\xfc':                  # Tager besked, hvis den kommer fra pulsmåler
             print(host, msg)
-            msg_pulse = msg.decode('ascii')
+            msg_pulse = msg.decode('ascii')                        # Omdanner besked fra bytestring til string
             data_pulse = float(msg_pulse)
             
-        if msg and host == b'\xc8.\x18\x16\x9bl':        # Tager besked, hvis den kommer fra gyroskop
+        if msg and host == b'\xc8.\x18\x16\x9bl':                  # Tager besked, hvis den kommer fra gyroskop
             print(host, msg)
-            msg_gyro = msg.decode('ascii')
-            data_gyro = float(msg_gyro)
+            msg_gyro = msg.decode('ascii')                         # Omdanner besked fra bytestring til string
+            gyro_effect = (float(msg_gyro) * 6) * 3600 / 4184      # Omregner effekt til kalorier/timen
+            kalorier_time = float(gyro_effect)
         
         if lcd_display == 0:
-            if gps_data != None and gps_data != False:   # Viser nuværende lat, lon, course og speed på LCD-skærm
+            if gps_data != None and gps_data != False:             # Viser nuværende lat, lon, course og speed på LCD-skærm
                 lcd.clear()
                 lcd.move_to (0, 0)
-                lcd.putstr("Latitude:")
+                lcd.putstr(f"Latitude: {str(gps_data[0])")
                 lcd.move_to (0, 1)
-                lcd.putstr(str(gps_data[0]))
-                lcd.move_to (11, 0)
-                lcd.putstr("Longitude:")
-                lcd.move_to (11, 1)
-                lcd.putstr(str(gps_data[1]))
+                lcd.putstr(f"Longitude: {str(gps_data[1])}")
                 lcd.move_to (0, 2)
                 lcd.putstr(f"km/t: {str(round(gps_data[3],2))}")
                 lcd.move_to (11, 2)
                 lcd.putstr(f"Dir: {str(round(gps_data[2],1))}")
                 
-            else:
+            else:                                                  # Fejlbesked, hvis der ikke er data fra GPS
                 lcd.clear()
                 lcd.move_to (0, 0)
                 lcd.putstr("Connecting...")
                 
         if lcd_display == 50:
-            if data_pulse != None and data_pulse != False and data_gyro != None and data_gyro != False:   # Viser nuværende data på LCD-skærm
+            if data_pulse != None and data_pulse != False and data_gyro != None and data_gyro != False:   # Viser nuværende data fra pulsmåler og gyroskop på LCD-skærm
                 lcd.clear()
                 lcd.move_to (0,0)
                 lcd.putstr(f"BPM: {round(data_pulse)}")
                 lcd.move_to (0, 1)
-                lcd.putstr(f"Effekt: {round(data_gyro)}")
-            else:
+                lcd.putstr(f"Kalorier/t: {round(kalorier_time)}")
+            else:                                                                           # Fejlbesked, hvis der ikke er data fra pulsmåler og gyroskop
                 lcd.clear()
                 lcd.move_to (0, 0)
                 lcd.putstr("177013")

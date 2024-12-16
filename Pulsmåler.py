@@ -62,31 +62,31 @@ def calculate_heartrate():
 
 ### Program
 
-host, msg = e.recv()
-if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':
+host, msg = e.recv()                                 # Opretter host og msg opbjekter fra e.recv()
+if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':   # Vågner, hvis wake-up-besked er modtaget
     print("Waking up...")
     e.send("0")
-else:
+else:                                                # Sover videre, hvis wake-up-besked ikke modtages
     deepsleep(20000)
 
 while True:
-    if gc.mem_free() < 2000:                  # Frigør hukommelse, hvis der er mindre end 2000 bytes tilbage
+    if gc.mem_free() < 2000:                         # Frigør hukommelse, hvis der er mindre end 2000 bytes tilbage
         gc.collect()
     
-    detect_heartbeat()                        # Måler hjerteslag
-    if ticks_ms() - start_time >= 10000:      # Opdaterer BPM, hvert 10'ende sekund
+    detect_heartbeat()                               # Måler hjerteslag
+    if ticks_ms() - start_time >= 10000:             # Opdaterer BPM, hvert 10'ende sekund
         heart_rate = calculate_heartrate()
         print(f"BPM {round(heart_rate,2)}")
         
-        pulse_count = 0                       # Resetter pulse_count efter BPM er udregnet
-        start_time = ticks_ms()               # Resetter start_time
+        pulse_count = 0                              # Resetter pulse_count efter BPM er udregnet
+        start_time = ticks_ms()                      # Resetter start_time
         
-    if heart_rate != 0:
+    if heart_rate != 0:                              # Sender BPM til localhost, hvis BPM ikke er 0
         e.send(str(heart_rate))
         
     if msg:
         print(host, msg)
-        if msg == b'sleep, bish!':
+        if msg == b'sleep, bish!':                   # Påbegynder 20 sekunders deepsleep, hvis deepsleep-besked ankommer
             deepsleep(20000)
             
-    sleep(sample_rate)                        # Venter til næste sample skal tages
+    sleep(sample_rate)                               # Venter til næste sample skal tages
