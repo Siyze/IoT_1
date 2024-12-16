@@ -1,7 +1,23 @@
 from machine import Pin, ADC
 from time import sleep, ticks_ms
+import network
+import ubinascii
+import espnow
 
 ### Konfiguuration
+
+wlan_sta = network.WLAN(network.STA_IF)   # Opretter WLAN objekt
+wlan_sta.active(True)                     # Aktivering af netværk
+
+wlan_mac = wlan_sta.config('mac')         # Visning af MAC-adresse
+print("MAC Address as bytestring:", wlan_mac)
+print("MAC Address as Hex:", ubinascii.hexlify(wlan_mac).decode())
+
+e = espnow.ESPNow()                           # Opretter ESPNow objekt
+e.active(True)                                # Aktivering af ESPNow
+e.config(timeout_ms=-1)
+peer_localhost = b'\xd4\x8a\xfch\x9f\x84'     # Tilføjer peer for localhost
+e.add_peer(peer_localhost)
 
 pulse_sensor = ADC(Pin(34, Pin.IN))   # Opretter pulsmåler objekt
 pulse_sensor.atten(ADC.ATTN_0DB)      # Sætter range for pulsmåler til 0-3.3V
@@ -9,8 +25,9 @@ pulse_sensor.width(ADC.WIDTH_10BIT)   # Sætter værdier for pulsmåler mellem 0
 
 MAX_HISTORY = 250                     # Max længde på gemte puls-værdier
 sample_rate = 0.05                    # Længde mellem sampling af værdier
-pulse_count = 0                       # Default value for pulse_count
 last_value = 0                        # Default value for last_value
+pulse_count = 0                       # Default value for pulse_count
+heart_rate = 0                        # Default value for heart_rate
 start_time = ticks_ms()
 
 history = []                          # Opretter log til at bestemme min, max og threshold
@@ -54,3 +71,7 @@ while True:
         start_time = ticks_ms()               # Resetter start_time
         
     sleep(sample_rate)                        # Venter til næste sample skal tages
+    
+    if heart_rate != 0:
+        e.send(str(heart_rate))
+        sleep(sample_rate)
