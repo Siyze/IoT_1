@@ -22,6 +22,7 @@ print("MAC Address as Hex:", ubinascii.hexlify(wlan_mac).decode())
 
 e = espnow.ESPNow()                       # Opretter ESPNow objekt
 e.active(True)                            # Aktivering af ESPNow
+e.config(timeout_ms=-1)
 peer_pulse = b'\xc8.\x18\x15<\xfc'        # MAC adresse for pulsmeter
 peer_gyro = b'\xc8.\x18\x16\x9bl'         # MAC adresse for gyroskop
 e.add_peer(peer_pulse)                    # Tilføjer peer for pulsmeter
@@ -29,7 +30,8 @@ e.add_peer(peer_gyro)                     # Tilføjer peer for gyroskop
 data_pulse = None                         # Default value for data_pulse
 data_gyro = None                          # Default value for data_gyro
 park_accel = 1                            # Default value for park_accel
-parked = False
+parked = False                            # Default value for parked
+lcd_display = 0                           # Default value for lcd_display
 
 lcd = GpioLcd(rs_pin=Pin(27), enable_pin=Pin(25),   #Opsætning af LCD-skærm objekt
         d4_pin=Pin(33), d5_pin=Pin(32), d6_pin=Pin(21), d7_pin=Pin(22),
@@ -91,8 +93,6 @@ else:
     lcd.move_to (0, 0)
     print("going back to sleep")
     deepsleep(20000)
-    
-lcd_display = 0
 
 while True:
     try:
@@ -170,6 +170,8 @@ while True:
         if acceleration.x < -0.1 or acceleration.x > 0.1:
             timer_deepsleep.deinit()                                                        # Slukker timer til deepsleep
             parked = False                                                                  # Fortæller programmet at cyklen ikke længere står stille
+        
+        e.send(".")
         
         sleep(.1)
     

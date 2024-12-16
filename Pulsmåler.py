@@ -81,5 +81,6 @@ while True:
         print(host, msg)
         if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':
             print("Waking up...")
+            e.send("Gotcha")
         if msg == b'sleep, bish!':
             deepsleep(5000)
