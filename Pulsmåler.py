@@ -3,6 +3,7 @@ from time import sleep, ticks_ms
 import network
 import ubinascii
 import espnow
+import gc
 
 ### Konfiguuration
 
@@ -61,7 +62,17 @@ def calculate_heartrate():
 
 ### Program
 
+host, msg = e.recv()
+if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':
+    print("Waking up...")
+    e.send("0")
+else:
+    deepsleep(20000)
+
 while True:
+    if gc.mem_free() < 2000:                  # Frigør hukommelse, hvis der er mindre end 2000 bytes tilbage
+        gc.collect()
+    
     detect_heartbeat()                        # Måler hjerteslag
     if ticks_ms() - start_time >= 10000:      # Opdaterer BPM, hvert 10'ende sekund
         heart_rate = calculate_heartrate()
@@ -70,17 +81,12 @@ while True:
         pulse_count = 0                       # Resetter pulse_count efter BPM er udregnet
         start_time = ticks_ms()               # Resetter start_time
         
-    sleep(sample_rate)                        # Venter til næste sample skal tages
-    
     if heart_rate != 0:
         e.send(str(heart_rate))
-        sleep(sample_rate)
         
-    host, msg = e.recv()
     if msg:
         print(host, msg)
-        if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':
-            print("Waking up...")
-            e.send("0")
         if msg == b'sleep, bish!':
             deepsleep(20000)
+            
+    sleep(sample_rate)                        # Venter til næste sample skal tages

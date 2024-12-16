@@ -87,11 +87,11 @@ if acceleration.x > .2 or acceleration.y > .2:
     lcd.move_to (0, 0)
     lcd.putstr("Waking up...")
     e.send("Wake up! ajkdsladhwoiahjdal Make Up!")
-    print("waking")
+    print("Waking up...")
 else:
     print(acceleration.x, acceleration.y)
     lcd.move_to (0, 0)
-    print("going back to sleep")
+    print("Going back to sleep...")
     e.send("sleep, bish!")
     deepsleep(20000)
 
