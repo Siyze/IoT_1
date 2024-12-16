@@ -92,6 +92,7 @@ else:
     print(acceleration.x, acceleration.y)
     lcd.move_to (0, 0)
     print("going back to sleep")
+    e.send("sleep, bish!")
     deepsleep(20000)
 
 while True:
@@ -148,7 +149,7 @@ while True:
                 lcd.putstr("Connecting...")
                 
         if lcd_display == 50:
-            if data_pulse != None and data_gyro != None:   # Viser nuværende data på LCD-skærm
+            if data_pulse != None and data_pulse != False and data_gyro != None and data_gyro != False:   # Viser nuværende data på LCD-skærm
                 lcd.clear()
                 lcd.move_to (0,0)
                 lcd.putstr(f"BPM: {round(data_pulse)}")
@@ -165,13 +166,13 @@ while True:
             lcd_display = 0
             
         if acceleration.x <= 0.1 and acceleration.x >= -0.1 and parked != True:             # Tjekker om cyklen står stille
-            timer_deepsleep.init(period=10000, mode=Timer.ONE_SHOT, callback=sleep_bish)   # Starter timer til deepsleep
+            timer_deepsleep.init(period=10000, mode=Timer.ONE_SHOT, callback=sleep_bish)    # Starter timer til deepsleep
             parked = True                                                                   # Fortæller programmet at cyklen står stille, så den ikke genstarter deepsleep-timer
         if acceleration.x < -0.1 or acceleration.x > 0.1:
             timer_deepsleep.deinit()                                                        # Slukker timer til deepsleep
             parked = False                                                                  # Fortæller programmet at cyklen ikke længere står stille
         
-        e.send(".")
+        e.send("0")
         
         sleep(.1)
     

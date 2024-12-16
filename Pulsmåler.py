@@ -1,4 +1,4 @@
-from machine import Pin, ADC
+from machine import Pin, ADC, deepsleep
 from time import sleep, ticks_ms
 import network
 import ubinascii
@@ -81,6 +81,6 @@ while True:
         print(host, msg)
         if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':
             print("Waking up...")
-            e.send("Gotcha")
+            e.send("0")
         if msg == b'sleep, bish!':
-            deepsleep(5000)
+            deepsleep(20000)
