@@ -22,7 +22,7 @@ print("MAC Address as Hex:", ubinascii.hexlify(wlan_mac).decode())
 
 e = espnow.ESPNow()                       # Opretter ESPNow objekt
 e.active(True)                            # Aktivering af ESPNow
-peer_pulse = b'\xd4\x8a\xfch\x9f\x84'     # Tilføjer peer til pulsmeter
+peer_pulse = b'\xc8.\x18\x15<\xfc'        # Tilføjer peer til pulsmeter
 e.add_peer(peer_pulse)
 current_data = None                       # Default value for current_data skal være None
 park_accel = 1                            # Default value for park_accel
@@ -70,6 +70,7 @@ def sleep_bish(obj):
     print("sleeping, bish!")
     set_color(0, 0, 0)
     lcd.clear()
+    e.send("sleep")
     deepsleep(20000)
 
 ### Programmer
@@ -108,6 +109,12 @@ while True:
         print(round(acceleration.x,2))
         print(gc.mem_free())
         
+        host, msg = e.recv()                   # Opretter MAC-adresse fra sender som host og besked som msg
+        if msg:                                # Printer besked i shell og gemmer besked som string
+            print(host, msg)
+            msg_decode = msg.decode('ascii')
+            current_data = str(msg_decode)
+        
         if lcd_display == 0:
             if gps_data != None and gps_data != False:   # Viser nuværende lat, lon, course og speed på LCD-skærm
                 lcd.clear()
@@ -127,9 +134,14 @@ while True:
             else:
                 lcd.clear()
                 lcd.move_to (0, 0)
-                lcd.putstr("GPS Connecting...")
+                lcd.putstr("Connecting...")
                 
         if lcd_display == 50:
+            if current_data != None:   # Viser nuværende data på LCD-skærm
+                lcd.clear()
+                lcd.move_to (0,0)
+                lcd.putstr(f"BPM: {round(current_data)}")
+            else:
                 lcd.clear()
                 lcd.move_to (0, 0)
                 lcd.putstr("177013")
@@ -138,25 +150,12 @@ while True:
             
         if lcd_display == 100:
             lcd_display = 0
-
-#         host, msg = e.recv()                   # Opretter MAC-adresse fra sender som host og besked som msg
-#         if msg:                                # Printer besked i shell og gemmer besked som string
-#             print(host, msg)
-#             msg_decode = msg.decode('ascii')
-#             current_data = str(msg_decode)
-#             if msg == b'end':                  # Slutter programmet, hvis slutbesked modtages
-#                 break
-            
-        if current_data != None:   # Viser nuværende data på LCD-skærm
-            lcd.clear()
-            lcd.move_to (1,0)
-            lcd.putstr(current_data)
             
         if acceleration.x <= 0.1 and acceleration.x >= -0.1 and parked != True:             # Tjekker om cyklen står stille
-            timer_deepsleep.init(period=180000, mode=Timer.ONE_SHOT, callback=sleep_bish)   # Starter timer til deepsleep
+            timer_deepsleep.init(period=10000, mode=Timer.ONE_SHOT, callback=sleep_bish)   # Starter timer til deepsleep
             parked = True                                                                   # Fortæller programmet at cyklen står stille, så den ikke genstarter deepsleep-timer
         if acceleration.x < -0.1 or acceleration.x > 0.1:
-            timer_deepsleep.deinit()                       m                                # Slukker timer til deepsleep
+            timer_deepsleep.deinit()                                                        # Slukker timer til deepsleep
             parked = False                                                                  # Fortæller programmet at cyklen ikke længere står stille
         
         sleep(.1)
