@@ -75,3 +75,11 @@ while True:
     if heart_rate != 0:
         e.send(str(heart_rate))
         sleep(sample_rate)
+        
+    host, msg = e.recv()
+    if msg:
+        print(host, msg)
+        if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':
+            print("Waking up...")
+        if msg == b'sleep, bish!':
+            deepsleep(5000)

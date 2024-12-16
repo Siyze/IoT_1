@@ -22,10 +22,14 @@ print("MAC Address as Hex:", ubinascii.hexlify(wlan_mac).decode())
 
 e = espnow.ESPNow()                       # Opretter ESPNow objekt
 e.active(True)                            # Aktivering af ESPNow
-peer_pulse = b'\xc8.\x18\x15<\xfc'        # Tilføjer peer til pulsmeter
-e.add_peer(peer_pulse)
-current_data = None                       # Default value for current_data skal være None
+peer_pulse = b'\xc8.\x18\x15<\xfc'        # MAC adresse for pulsmeter
+peer_gyro = b'\xc8.\x18\x16\x9bl'         # MAC adresse for gyroskop
+e.add_peer(peer_pulse)                    # Tilføjer peer for pulsmeter
+e.add_peer(peer_gyro)                     # Tilføjer peer for gyroskop
+data_pulse = None                         # Default value for data_pulse
+data_gyro = None                          # Default value for data_gyro
 park_accel = 1                            # Default value for park_accel
+parked = False
 
 lcd = GpioLcd(rs_pin=Pin(27), enable_pin=Pin(25),   #Opsætning af LCD-skærm objekt
         d4_pin=Pin(33), d5_pin=Pin(32), d6_pin=Pin(21), d7_pin=Pin(22),
@@ -70,7 +74,7 @@ def sleep_bish(obj):
     print("sleeping, bish!")
     set_color(0, 0, 0)
     lcd.clear()
-    e.send("sleep")
+    e.send("sleep, bish!")
     deepsleep(20000)
 
 ### Programmer
@@ -80,6 +84,7 @@ if acceleration.x > .2 or acceleration.y > .2:
     print(acceleration.x, acceleration.y)
     lcd.move_to (0, 0)
     lcd.putstr("Waking up...")
+    e.send("Wake up! ajkdsladhwoiahjdal Make Up!")
     print("waking")
 else:
     print(acceleration.x, acceleration.y)
@@ -109,11 +114,17 @@ while True:
         print(round(acceleration.x,2))
         print(gc.mem_free())
         
-        host, msg = e.recv()                   # Opretter MAC-adresse fra sender som host og besked som msg
-        if msg:                                # Printer besked i shell og gemmer besked som string
+        host, msg = e.recv()                             # Opretter MAC-adresse fra sender som host og besked som msg
+        
+        if msg and host == b'\xc8.\x18\x15<\xfc':        # Tager besked, hvis den kommer fra pulsmåler
             print(host, msg)
-            msg_decode = msg.decode('ascii')
-            current_data = str(msg_decode)
+            msg_pulse = msg.decode('ascii')
+            data_pulse = float(msg_pulse)
+            
+        if msg and host == b'\xc8.\x18\x16\x9bl':        # Tager besked, hvis den kommer fra gyroskop
+            print(host, msg)
+            msg_gyro = msg.decode('ascii')
+            data_gyro = float(msg_gyro)
         
         if lcd_display == 0:
             if gps_data != None and gps_data != False:   # Viser nuværende lat, lon, course og speed på LCD-skærm
@@ -137,10 +148,12 @@ while True:
                 lcd.putstr("Connecting...")
                 
         if lcd_display == 50:
-            if current_data != None:   # Viser nuværende data på LCD-skærm
+            if data_pulse != None and data_gyro != None:   # Viser nuværende data på LCD-skærm
                 lcd.clear()
                 lcd.move_to (0,0)
-                lcd.putstr(f"BPM: {round(current_data)}")
+                lcd.putstr(f"BPM: {round(data_pulse)}")
+                lcd.move_to (0, 1)
+                lcd.putstr(f"Effekt: {round(data_gyro)}")
             else:
                 lcd.clear()
                 lcd.move_to (0, 0)
