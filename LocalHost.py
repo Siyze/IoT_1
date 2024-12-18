@@ -2,7 +2,7 @@ import network
 import espnow
 import ubinascii
 from gpio_lcd import GpioLcd
-from time import sleep
+from time import sleep, ticks_ms
 from machine import Pin, Timer, UART, reset, deepsleep, I2C
 import gc
 from gps_simple import GPS_SIMPLE
@@ -30,15 +30,17 @@ peer_gyro = b'\xc8.\x18\x16\x9bl'         # MAC adresse for gyroskop
 e.add_peer(peer_pulse)                    # Tilføjer peer for pulsmeter
 e.add_peer(peer_gyro)                     # Tilføjer peer for gyroskop
 
-client = TBDeviceMqttClient(secrets.SERVER_IP_ADDRESS, access_token = secrets.ACCESS_TOKEN)
-client.connect()                          # Connecting to ThingsBoard
-print("Connected to ThingsBoard")
+# client = TBDeviceMqttClient(secrets.SERVER_IP_ADDRESS, access_token = secrets.ACCESS_TOKEN)
+# client.connect()                          # Connecting to ThingsBoard
+# print("Connected to ThingsBoard")
 
 data_pulse = None                         # Default value for data_pulse
 data_gyro = None                          # Default value for data_gyro
 park_accel = 1                            # Default value for park_accel
 parked = False                            # Default value for parked
 lcd_display = 0                           # Default value for lcd_display
+start_time = ticks_ms()
+elapsed_time = ticks_ms() - start_time
 
 lcd = GpioLcd(rs_pin=Pin(27), enable_pin=Pin(25),   #Opsætning af LCD-skærm objekt
         d4_pin=Pin(33), d5_pin=Pin(32), d6_pin=Pin(21), d7_pin=Pin(22),
@@ -106,7 +108,7 @@ while True:
     try:
         if gc.mem_free() < 2000:   # Frigør hukommelse, hvis der er mindre end 2000 bytes tilbage
             gc.collect()
-            
+                                    
         if acceleration.x < .5 and park_accel != 1:
             set_color(100, 0, 0)
             sleep(1)
@@ -132,16 +134,18 @@ while True:
         if msg and host == b'\xc8.\x18\x16\x9bl':                  # Tager besked, hvis den kommer fra gyroskop
             print(host, msg)
             msg_gyro = msg.decode('ascii')                         # Omdanner besked fra bytestring til string
-            gyro_effect = (float(msg_gyro) * 6) * 3600 / 4184      # Omregner effekt til kalorier/timen
-            kalorier_time = float(gyro_effect)
+            data_gyro = float(msg_gyro)
+            calories_burned = float(msg_gyro)                      # Udskriver kalorier brændt indtil videre
+            gyro_effect = ((float(msg_gyro) / elapsed_time) * 6)   # Omregner effekt til kalorier/timen
+            calories_time = float(gyro_effect)
         
         if lcd_display == 0:
             if gps_data != None and gps_data != False:             # Viser nuværende lat, lon, course og speed på LCD-skærm
                 lcd.clear()
                 lcd.move_to (0, 0)
-                lcd.putstr(f"Latitude: {str(gps_data[0])")
+                lcd.putstr(f'Latitude: {str(gps_data[0])}')
                 lcd.move_to (0, 1)
-                lcd.putstr(f"Longitude: {str(gps_data[1])}")
+                lcd.putstr(f'Longitude: {str(gps_data[1])}')
                 lcd.move_to (0, 2)
                 lcd.putstr(f"km/t: {str(round(gps_data[3],2))}")
                 lcd.move_to (11, 2)
@@ -153,12 +157,14 @@ while True:
                 lcd.putstr("Connecting...")
                 
         if lcd_display == 50:
-            if data_pulse != None and data_pulse != False and data_gyro != None and data_gyro != False:   # Viser nuværende data fra pulsmåler og gyroskop på LCD-skærm
+            if data_pulse != None and data_pulse != 0 and data_gyro != None and data_gyro != 0:   # Viser nuværende data fra pulsmåler og gyroskop på LCD-skærm
                 lcd.clear()
                 lcd.move_to (0,0)
                 lcd.putstr(f"BPM: {round(data_pulse)}")
                 lcd.move_to (0, 1)
-                lcd.putstr(f"Kalorier/t: {round(kalorier_time)}")
+                lcd.putstr(f"Kalorier/t: {round(calories_time)}")
+                lcd.move_to (0, 2)
+                lcd.putstr(f'Kalorier brændt: {round(calories_burned)}')
             else:                                                                           # Fejlbesked, hvis der ikke er data fra pulsmåler og gyroskop
                 lcd.clear()
                 lcd.move_to (0, 0)
@@ -175,14 +181,12 @@ while True:
         if acceleration.x < -0.1 or acceleration.x > 0.1:
             timer_deepsleep.deinit()                                                        # Slukker timer til deepsleep
             parked = False                                                                  # Fortæller programmet at cyklen ikke længere står stille
-        
-        e.send("0")
-        
-        telemetry = {}
-        client.send_telemetry(telemetry)
-        
+                
+#         telemetry = {}
+#         client.send_telemetry(telemetry)
+                
         sleep(.1)
     
     except KeyboardInterrupt:
-        client.disconnect()
+#         client.disconnect()
         reset()

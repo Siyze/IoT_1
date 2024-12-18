@@ -83,10 +83,13 @@ while True:
         
     if heart_rate != 0:                              # Sender BPM til localhost, hvis BPM ikke er 0
         e.send(str(heart_rate))
-        
+    
+    e.config(timeout_ms=0)
+    host, msg = e.recv()
     if msg:
         print(host, msg)
         if msg == b'sleep, bish!':                   # Påbegynder 20 sekunders deepsleep, hvis deepsleep-besked ankommer
+            print("Sleeping...")
             deepsleep(20000)
             
     sleep(sample_rate)                               # Venter til næste sample skal tages
