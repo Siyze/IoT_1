@@ -93,7 +93,7 @@ while True:
     print(f"Forbrændte kalorier (total): {round(calorie_calculator.total_calories, 2)} kcal")
     
     if calorie_calculator.total_calories != 0:       # Sender kalorier til localhost, hvis kalorier ikke er 0
-        e.send(str(calorie_calculator.total_calories))
+        e.send(str(calories_burned))
     
     e.config(timeout_ms=0)
     host, msg = e.recv()
@@ -103,4 +103,4 @@ while True:
             print("Sleeping...")
             deepsleep(20000)
     
-    time.sleep(5.0)  # Opdater hver sekund
+    time.sleep(.1)  # Opdater hver sekund
