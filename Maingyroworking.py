@@ -5,7 +5,7 @@ import math
 import network
 import espnow
 import gc
-import ubninascii
+import ubinascii
 
 ### Konfiguration
 
@@ -60,20 +60,20 @@ class CalorieCalculator:
 # Initialisering
 i2c = I2C(0)
 imu = MPU6050(i2c)
-calorie_calculator = CalorieCalculator(weight_kg=86,4)  # Gennemsnitsvægt for en dansk mand
+calorie_calculator = CalorieCalculator(weight_kg=86.4)  # Gennemsnitsvægt for en dansk mand
 
-host, msg = e.recv()                                 # Opretter host og msg opbjekter fra e.recv()
-if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':   # Vågner, hvis wake-up-besked er modtaget
-    print("Waking up...")
-    e.send("0")
-else:                                                # Sover videre, hvis wake-up-besked ikke modtages
-    deepsleep(20000)
+# host, msg = e.recv()                                 # Opretter host og msg opbjekter fra e.recv()
+# if msg == b'Wake up! ajkdsladhwoiahjdal Make Up!':   # Vågner, hvis wake-up-besked er modtaget
+#     print("Waking up...")
+#     e.send("0")
+# else:                                                # Sover videre, hvis wake-up-besked ikke modtages
+#     deepsleep(20000)
 
 print("Starter kaloriemåling...")
 print("Temperatur: ", round(imu.temperature,2), "°C")
 
 while True:
-     if gc.mem_free() < 2000:                         # Frigør hukommelse, hvis der er mindre end 2000 bytes tilbage
+    if gc.mem_free() > 2000:
         gc.collect()
     
     # Læs sensordata
@@ -92,12 +92,12 @@ while True:
     print(f"Aktuel MET: {calorie_calculator.met_value}")
     print(f"Forbrændte kalorier (total): {round(calorie_calculator.total_calories, 2)} kcal")
     
-    if calorie_calculator.total_calories != 0:       # Sender kalorier til localhost, hvis kalorier ikke er 0
-        e.send(str(calorie_calculator.total_calories))
-        
-    if msg:
-        print(host, msg)
-        if msg == b'sleep, bish!':                   # Påbegynder 20 sekunders deepsleep, hvis deepsleep-besked ankommer
-            deepsleep(20000)
+#     if calorie_calculator.total_calories != 0:       # Sender kalorier til localhost, hvis kalorier ikke er 0
+#         e.send(str(calorie_calculator.total_calories))
+#         
+#     if msg:
+#         print(host, msg)
+#         if msg == b'sleep, bish!':                   # Påbegynder 20 sekunders deepsleep, hvis deepsleep-besked ankommer
+#             deepsleep(20000)
     
     time.sleep(5.0)  # Opdater hver sekund
