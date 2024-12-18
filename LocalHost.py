@@ -10,6 +10,8 @@ import esp32
 from imu import MPU6050
 import sys
 from neopixel import NeoPixel
+from uthingsboard.client import TBDeviceMqttClient
+import secrets
 
 ### Konfiguration og opsætning
 
@@ -27,6 +29,11 @@ peer_pulse = b'\xc8.\x18\x15<\xfc'        # MAC adresse for pulsmeter
 peer_gyro = b'\xc8.\x18\x16\x9bl'         # MAC adresse for gyroskop
 e.add_peer(peer_pulse)                    # Tilføjer peer for pulsmeter
 e.add_peer(peer_gyro)                     # Tilføjer peer for gyroskop
+
+client = TBDeviceMqttClient(secrets.SERVER_IP_ADDRESS, access_token = secrets.ACCESS_TOKEN)
+client.connect()                          # Connecting to ThingsBoard
+print("Connected to ThingsBoard")
+
 data_pulse = None                         # Default value for data_pulse
 data_gyro = None                          # Default value for data_gyro
 park_accel = 1                            # Default value for park_accel
@@ -39,16 +46,16 @@ lcd = GpioLcd(rs_pin=Pin(27), enable_pin=Pin(25),   #Opsætning af LCD-skærm ob
 n = 12                               # Antal neopixel på neopixelring
 np = NeoPixel(Pin(26, Pin.OUT), n)   # Opretter NeoPixel objekt
 
-gps_port = 2                       # ESP32 UART port
-gps_speed = 9600                   # UART fart
-uart = UART(gps_port, gps_speed)   # Opretter UART objekt
-gps = GPS_SIMPLE(uart)             # Opretter GPS objekt
+gps_port = 2                         # ESP32 UART port
+gps_speed = 9600                     # UART fart
+uart = UART(gps_port, gps_speed)     # Opretter UART objekt
+gps = GPS_SIMPLE(uart)               # Opretter GPS objekt
 
-i2c = I2C(0)                       # Initialisere I2C objekt
-imu = MPU6050(i2c)                 # Initialisere MPU6050 objekt
-acceleration = imu.accel           # Opretter accelerations variabel
+i2c = I2C(0)                         # Initialisere I2C objekt
+imu = MPU6050(i2c)                   # Initialisere MPU6050 objekt
+acceleration = imu.accel             # Opretter accelerations variabel
 
-timer_deepsleep = Timer(0)         # Opretter Timer objekt
+timer_deepsleep = Timer(0)           # Opretter Timer objekt
 
 ### Definere funktioner
     
@@ -171,7 +178,11 @@ while True:
         
         e.send("0")
         
+        telemetry = {}
+        client.send_telemetry(telemetry)
+        
         sleep(.1)
     
     except KeyboardInterrupt:
+        client.disconnect()
         reset()
