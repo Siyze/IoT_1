@@ -10,6 +10,7 @@ from imu import MPU6050
 from neopixel import NeoPixel
 from uthingsboard.client import TBDeviceMqttClient
 import secrets
+from random import randint
 
 ### Konfiguration og opsætning
 
@@ -28,15 +29,16 @@ peer_gyro = b'\xc8.\x18\x16\x9bl'         # MAC adresse for gyroskop
 e.add_peer(peer_pulse)                    # Tilføjer peer for pulsmeter
 e.add_peer(peer_gyro)                     # Tilføjer peer for gyroskop
 
-# client = TBDeviceMqttClient(secrets.SERVER_IP_ADDRESS, access_token = secrets.ACCESS_TOKEN)
-# client.connect()                          # Connecting to ThingsBoard
-# print("Connected to ThingsBoard")
+client = TBDeviceMqttClient(secrets.SERVER_IP_ADDRESS, access_token = secrets.ACCESS_TOKEN)
+client.connect()                          # Connecting to ThingsBoard
+print("Connected to ThingsBoard")
 
 data_pulse = None                         # Default value for data_pulse
 data_gyro = None                          # Default value for data_gyro
 park_accel = 1                            # Default value for park_accel
 parked = False                            # Default value for parked
 lcd_display = 0                           # Default value for lcd_display
+calories_burned = 0                       # Default value for calories_burned
 prev_cal = 0                              # Default value for prev_cal
 start_cal_hour = ticks_ms()
 
@@ -120,37 +122,28 @@ while True:
         
         gps_data = get_gps_data()                # Opretter lat, lon, course og speed som tuple
         temp = imu.temperature                   # Opdaterer temperaturen
-#         print(gps_data)
-#         print(round(acceleration.x,2))
-#         print(temp)
-#         print(gc.mem_free())
+        print(gps_data)
+        print(round(acceleration.x,2))
+        print(temp)
+        print(gc.mem_free())
         
-        host, msg = e.recv()                                              # Opretter MAC-adresse fra sender som host og besked som msg
+#         host, msg = e.recv()                                              # Opretter MAC-adresse fra sender som host og besked som msg
         
-        if msg and host == b'\xc8.\x18\x15<\xfc':                         # Tager besked, hvis den kommer fra pulsmåler
-#             print(host, msg)
-            msg_gyro = msg.decode('ascii')                                # Omdanner besked fra bytestring til string
-            data_gyro = float(msg_gyro)
-            calories_burned = float(msg_gyro)                      # Udskriver kalorier brændt indtil videre
-            if ticks_ms() - start_cal_hour >= 10000:
-                cal_now = calories_burned
-                calories_time = prev_cal * 6 * 60
-                start_cal_hour = ticks_ms()
-                print(prev_cal)
-                print(f'Kalorier/t: {round(calories_time)}')
-#             print(f'Kalorier brændt: {round(calories_burned,2)}')
+#         if msg and host == b'\xc8.\x18\x15<\xfc':                         # Tager besked, hvis den kommer fra pulsmåler
 #             print(host, msg)
 #             msg_pulse = msg.decode('ascii')                               # Omdanner besked fra bytestring til string
 #             data_pulse = float(msg_pulse)
-            
-        if msg and host == b'\xc8.\x18\x16\x9bl':                         # Tager besked, hvis den kommer fra gyroskop
-            print(host, msg)
-            msg_gyro = msg.decode('ascii')                                # Omdanner besked fra bytestring til string
-            data_gyro = float(msg_gyro)
-            calories_burned = float(msg_gyro) * 1000                      # Udskriver kalorier brændt indtil videre
-            calories_time = (float(msg_gyro) / elapsed_time) * 6 * 1000   # Omregner effekt til kalorier/timen
-            print(f'Kalorier brændt: {round(calories_burned,2)}')
-            print(f'Kalorier/t: {round(calories_time,2)}')
+#             
+#         if msg and host == b'\xc8.\x18\x16\x9bl':                         # Tager besked, hvis den kommer fra gyroskop
+#             print(host, msg)
+#             msg_gyro = msg.decode('ascii')                                # Omdanner besked fra bytestring til string
+#             data_gyro = float(msg_gyro)
+#             calories_burned += data_gyro                                  # Sammenlægger kalorier til kalorier forbrændt i alt
+#             if ticks_ms() - start_cal_hour >= 10000:                      # Udregner kalorieforbrug i timen hvert 10'ende sekund
+#                 calories_period = calories_burned -prev_cal               # Finder kalorierforbrug i 10-sekunders periode
+#                 prev_cal = calories_burned                                # Gemmer nuværende total kalorieforbrug
+#                 calories_hour = calories_period * 6 * 60                  # Omregner kalorieforbrug i perioden til kalorieforbrug i timen
+#                 start_cal_hour = ticks_ms()                               # Genstarter 10-sekunders timer
         
         if lcd_display == 0:
             if gps_data != None and gps_data != False:                    # Viser nuværende lat, lon, course og speed på LCD-skærm
@@ -175,7 +168,7 @@ while True:
                 lcd.move_to (0,0)
                 lcd.putstr(f"BPM: {round(data_pulse)}")
                 lcd.move_to (0, 1)
-                lcd.putstr(f"Kalorier/t: {round(calories_time)}")
+                lcd.putstr(f"Kalorier/t: {round(calories_hour)}")
                 lcd.move_to (0, 2)
                 lcd.putstr(f'Kalorier brændt: {round(calories_burned)}')
             else:                                                                                 # Fejlbesked, hvis der ikke er data fra pulsmåler og gyroskop
@@ -194,14 +187,20 @@ while True:
         if acceleration.x < -0.1 or acceleration.x > 0.1:
             timer_deepsleep.deinit()                                                        # Slukker timer til deepsleep
             parked = False                                                                  # Fortæller programmet at cyklen ikke længere står stille
-                
-#         telemetry = {"latitude": gps_data[0], "longitude": gps_data[1], "course": gps_data[2], "speed": gps_data[3],
-#                      "cal_burn": calories_burned, "cal_hour": calories_time,
-#                      "temperature": temp}
-#         client.send_telemetry(telemetry)
+            
+        rand_cal = randint(0, 5)
+        calories_burned += rand_cal
+        calories_hour = randint(120, 130)
+        data_pulse = randint(60, 80)
+        
+        if gps_data != False and gps_data != None:
+            telemetry = {"latitude": float(gps_data[0]), "longitude": float(gps_data[1]), "course": float(gps_data[2]), "speed": float(gps_data[3]),
+                         "cal_burn": calories_burned, "cal_hour": calories_hour, "pulse_data": data_pulse,
+                         "temperature": temp}                                                   # Opretter dictionary med data
+            client.send_telemetry(telemetry)                                                    # Sender dictionary med data til Thingsboard
                 
         sleep(.1)
     
     except KeyboardInterrupt:
-#         client.disconnect()
+        client.disconnect()
         reset()
