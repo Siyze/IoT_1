@@ -164,7 +164,7 @@ while True:
                 data_gyro = float(msg_gyro)
                 calories_burned += data_gyro                                  # Sammenlægger kalorier til kalorier forbrændt i alt
                 if ticks_ms() - start_cal_hour >= 10000:                      # Udregner kalorieforbrug i timen hvert 10'ende sekund
-                    calories_period = calories_burned -prev_cal               # Finder kalorierforbrug i 10-sekunders periode
+                    calories_period = calories_burned - prev_cal              # Finder kalorierforbrug i 10-sekunders periode
                     prev_cal = calories_burned                                # Gemmer nuværende total kalorieforbrug
                     calories_hour = calories_period * 6 * 60                  # Omregner kalorieforbrug i perioden til kalorieforbrug i timen
                     start_cal_hour = ticks_ms()                               # Genstarter 10-sekunders timer
@@ -180,6 +180,8 @@ while True:
                     lcd.putstr(f"km/t: {str(round(gps_data[3],2))}")
                     lcd.move_to (11, 2)
                     lcd.putstr(f"Dir: {str(round(gps_data[2],1))}")
+                    lcd.move_to (0, 3)
+                    lcd.putstr(f'Temp: {str(temp)} °C')
                     
                 else:                                                           # Fejlbesked, hvis der ikke er data fra GPS
                     lcd.clear()
