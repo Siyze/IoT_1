@@ -3,7 +3,7 @@ import espnow
 import ubinascii
 from gpio_lcd import GpioLcd
 from time import sleep, ticks_ms
-from machine import Pin, Timer, UART, reset, deepsleep, I2C
+from machine import Pin, Timer, UART, reset, deepsleep, I2C, PWM, SPI
 import gc
 from gps_simple import GPS_SIMPLE
 from imu import MPU6050
@@ -12,6 +12,7 @@ from uthingsboard.client import TBDeviceMqttClient
 import secrets
 from ina219_lib import INA219
 from sys import exit
+from portExp_MCP23S08 import PortExp_MCP23S08
 
 ### Konfiguration og opsætning
 
@@ -61,11 +62,13 @@ imu = MPU6050(i2c)                      # Initialisere MPU6050 objekt
 acceleration = imu.accel                # Opretter accelerations variabel
 temp = imu.temperature                  # Opretter temperatur variabel
 
-# ina_pin = i2c                           # INA219 bruger I2C som pin
-# ina_i2c_addr = 0x40                     # INA219 I2C adresse
-# ina219 = INA219(i2c, ina_i2c_addr)      # Opretter INA219 objekt
-# ina219.set_calibration_16V_400mA()      # Kalibrere INA219 til at være mere følsom
-# current = ina219.get_current()          # Opretter current variabel
+ina_pin = i2c                           # INA219 bruger I2C som pin
+ina_i2c_addr = 0x40                     # INA219 I2C adresse
+ina219 = INA219(i2c, ina_i2c_addr)      # Opretter INA219 objekt
+ina219.set_calibration_16V_400mA()      # Kalibrere INA219 til at være mere følsom
+current = ina219.get_current()          # Opretter current variabel
+
+buzzer = PWM(Pin(14, Pin.OUT), duty=0)
 
 timer_deepsleep = Timer(0)              # Opretter Timer objekt
 
@@ -86,12 +89,12 @@ def get_gps_data():             # Funktion til at få lat, lon og course fra gps
     else:
         return False
     
-def set_color(r, g, b):               # Sætter farve på neopixel ring
+def set_color(r, g, b):                # Sætter farve på neopixel ring
     for i in range(n):
         np[i] = (r, g, b)
     np.write()
     
-def sleep_bish(obj):                  # Slukker alt og går i 20 sekunders deepsleep
+def sleep_bish(obj):                   # Slukker alt og går i 20 sekunders deepsleep
     print("sleeping, bish!")
     set_color(0, 0, 0)
     lcd.clear()
@@ -105,8 +108,13 @@ def handler(req_id, method, params):   # Skifter alarm til eller fra, hvis RPC k
         if method == "toggle_alarm":
             if params == True:
                 alarm = True
+                timer_deepsleep.deinit()
+                lcd.clear()
+                set_color(0, 0, 0)
+                e.send("sleep, bish")
             else:
                 alarm = False
+                e.send("Wake up! ajkdsladhwoiahjdal Make Up!")
     except TypeError as e:
         print(e)
     
@@ -114,18 +122,18 @@ def handler(req_id, method, params):   # Skifter alarm til eller fra, hvis RPC k
 ### Programmer
 
 sleep(1)                                             # Buffer ved start af tur
-# if acceleration.x > .2 or acceleration.y > .2:       # Tjekker om cyklen er i bevægelse
-#     print(acceleration.x, acceleration.y)
-#     lcd.move_to (0, 0)
-#     lcd.putstr("Waking up...")
-#     e.send("Wake up! ajkdsladhwoiahjdal Make Up!")   # Sender besked til pulsmåler og gyroskop for at vække dem
-#     print("Waking up...")
-# else:
-#     print(acceleration.x, acceleration.y)
-#     lcd.move_to (0, 0)
-#     print("Going back to sleep...")
-#     e.send("sleep, bish!")                           # Sender besked til pulsmåler og gyroskop, så de går tilbage i deepsleep
-#     deepsleep(20000)                                 # Går i deepsleep i 20 sekunder
+if acceleration.x > .2 or acceleration.y > .2:       # Tjekker om cyklen er i bevægelse
+    print(acceleration.x, acceleration.y)
+    lcd.move_to (0, 0)
+    lcd.putstr("Waking up...")
+    e.send("Wake up! ajkdsladhwoiahjdal Make Up!")   # Sender besked til pulsmåler og gyroskop for at vække dem
+    print("Waking up...")
+else:
+    print(acceleration.x, acceleration.y)
+    lcd.move_to (0, 0)
+    print("Going back to sleep...")
+    e.send("sleep, bish!")                           # Sender besked til pulsmåler og gyroskop, så de går tilbage i deepsleep
+    deepsleep(20000)                                 # Går i deepsleep i 20 sekunder
 
 while True:
     try:
@@ -135,38 +143,34 @@ while True:
         client.set_server_side_rpc_request_handler(handler)
         client.check_msg()
         
-        if alarm == False:
+        if alarm == False:                                # Kører programmet, hvis alarmen ikke er slået til
             gps_data = get_gps_data()                     # Opretter lat, lon, course og speed som tuple
             temp = imu.temperature                        # Opdaterer temperaturen
-#             current += ina219.get_current()
-#             battery_percentage = 100 - (current / battery_capacity) * 100
-#             print(gps_data)
+            current += ina219.get_current()
+            battery_percentage = 100 - (current / battery_capacity) * 100
+            print(gc.mem_free())
             print(round(acceleration.x,2))
-#             print(temp)
-#             print(gc.mem_free())
-#             print(battery)
-#             print(f'{battery_percentage}%')
                 
-#             host, msg = e.recv()                                              # Opretter MAC-adresse fra sender som host og besked som msg
-#             
-#             if msg and host == b'\xc8.\x18\x15<\xfc':                         # Tager besked, hvis den kommer fra pulsmåler
-#                 print(host, msg)
-#                 msg_pulse = msg.decode('ascii')                               # Omdanner besked fra bytestring til string
-#                 data_pulse = float(msg_pulse)
-#                 
-#             if msg and host == b'\xc8.\x18\x16\x9bl':                         # Tager besked, hvis den kommer fra gyroskop
-#                 print(host, msg)
-#                 msg_gyro = msg.decode('ascii')                                # Omdanner besked fra bytestring til string
-#                 data_gyro = float(msg_gyro)
-#                 calories_burned += data_gyro                                  # Sammenlægger kalorier til kalorier forbrændt i alt
-#                 if ticks_ms() - start_cal_hour >= 10000:                      # Udregner kalorieforbrug i timen hvert 10'ende sekund
-#                     calories_period = calories_burned -prev_cal               # Finder kalorierforbrug i 10-sekunders periode
-#                     prev_cal = calories_burned                                # Gemmer nuværende total kalorieforbrug
-#                     calories_hour = calories_period * 6 * 60                  # Omregner kalorieforbrug i perioden til kalorieforbrug i timen
-#                     start_cal_hour = ticks_ms()                               # Genstarter 10-sekunders timer
+            host, msg = e.recv()                                              # Opretter MAC-adresse fra sender som host og besked som msg
+            
+            if msg and host == b'\xc8.\x18\x15<\xfc':                         # Tager besked, hvis den kommer fra pulsmåler
+                print(host, msg)
+                msg_pulse = msg.decode('ascii')                               # Omdanner besked fra bytestring til string
+                data_pulse = float(msg_pulse)
+                
+            if msg and host == b'\xc8.\x18\x16\x9bl':                         # Tager besked, hvis den kommer fra gyroskop
+                print(host, msg)
+                msg_gyro = msg.decode('ascii')                                # Omdanner besked fra bytestring til string
+                data_gyro = float(msg_gyro)
+                calories_burned += data_gyro                                  # Sammenlægger kalorier til kalorier forbrændt i alt
+                if ticks_ms() - start_cal_hour >= 10000:                      # Udregner kalorieforbrug i timen hvert 10'ende sekund
+                    calories_period = calories_burned -prev_cal               # Finder kalorierforbrug i 10-sekunders periode
+                    prev_cal = calories_burned                                # Gemmer nuværende total kalorieforbrug
+                    calories_hour = calories_period * 6 * 60                  # Omregner kalorieforbrug i perioden til kalorieforbrug i timen
+                    start_cal_hour = ticks_ms()                               # Genstarter 10-sekunders timer
             
             if lcd_display == 0:
-                if gps_data != None and gps_data != False:                    # Viser nuværende lat, lon, course og speed på LCD-skærm
+                if gps_data != None and gps_data != False:                      # Viser nuværende lat, lon, course og speed på LCD-skærm
                     lcd.clear()
                     lcd.move_to (0, 0)
                     lcd.putstr(f'Latitude: {str(gps_data[0])}')
@@ -177,7 +181,7 @@ while True:
                     lcd.move_to (11, 2)
                     lcd.putstr(f"Dir: {str(round(gps_data[2],1))}")
                     
-                else:                                                         # Fejlbesked, hvis der ikke er data fra GPS
+                else:                                                           # Fejlbesked, hvis der ikke er data fra GPS
                     lcd.clear()
                     lcd.move_to (0, 0)
                     lcd.putstr("Connecting...")
@@ -212,7 +216,7 @@ while True:
                 park_accel = None
                 
             if acceleration.x <= 0.1 and acceleration.x >= -0.1 and parked != True:             # Tjekker om cyklen står stille
-                timer_deepsleep.init(period=10000, mode=Timer.ONE_SHOT, callback=sleep_bish)    # Starter timer til deepsleep
+                timer_deepsleep.init(period=180000, mode=Timer.ONE_SHOT, callback=sleep_bish)    # Starter timer til deepsleep
                 parked = True                                                                   # Fortæller programmet at cyklen står stille, så den ikke genstarter deepsleep-timer
             if acceleration.x < -0.1 or acceleration.x > 0.1:
                 timer_deepsleep.deinit()                                                        # Slukker timer til deepsleep
@@ -224,18 +228,18 @@ while True:
                              "temperature": temp, "battery": battery_percentage}                # Opretter dictionary med data
                 client.send_telemetry(telemetry)                                                # Sender dictionary med data til Thingsboard
                 
-        if alarm == True:
-            timer_deepsleep.deinit()
-            lcd.clear()
-            set_color(0, 0, 0)
-#             e.send("sleep, bish")
+        if alarm == True:              # Slår alarmsystemet til
             if acceleration.x >= .5:
                 set_color(255, 0, 0)
+                buzzer.duty(512)
+                buzzer.freq(2000)
                 sleep(.25)
                 set_color(0, 0, 0)
+                buzzer.duty(0)
                 sleep(.15)
             else:
                 set_color(0, 0, 0)
+                buzzer.duty(0)
                 
         sleep(.1)
     
