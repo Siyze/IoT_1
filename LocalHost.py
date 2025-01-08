@@ -49,6 +49,7 @@ start_cal_hour = ticks_ms()
 lcd = GpioLcd(rs_pin=Pin(27), enable_pin=Pin(25),   #Opsætning af LCD-skærm objekt
         d4_pin=Pin(33), d5_pin=Pin(32), d6_pin=Pin(21), d7_pin=Pin(22),
         num_lines=4, num_columns=20)
+
 n = 12                                  # Antal neopixel på neopixelring
 np = NeoPixel(Pin(26, Pin.OUT), n)      # Opretter NeoPixel objekt
 
@@ -68,13 +69,13 @@ ina219 = INA219(i2c, ina_i2c_addr)      # Opretter INA219 objekt
 ina219.set_calibration_16V_400mA()      # Kalibrere INA219 til at være mere følsom
 current = ina219.get_current()          # Opretter current variabel
 
-buzzer = PWM(Pin(14, Pin.OUT), duty=0)
+buzzer = PWM(Pin(14, Pin.OUT), duty=0)  # Opretter buzzer objekt
 
 timer_deepsleep = Timer(0)              # Opretter Timer objekt
 
 ### Definere funktioner
     
-def get_gps_data():             # Funktion til at få lat, lon og course fra gps
+def get_gps_data():                     # Funktion til at få lat, lon og course fra gps
     lat = lon = course = None
     
     if gps.receive_nmea_data():
@@ -89,19 +90,19 @@ def get_gps_data():             # Funktion til at få lat, lon og course fra gps
     else:
         return False
     
-def set_color(r, g, b):                # Sætter farve på neopixel ring
+def set_color(r, g, b):                 # Sætter farve på neopixel ring
     for i in range(n):
         np[i] = (r, g, b)
     np.write()
     
-def sleep_bish(obj):                   # Slukker alt og går i 20 sekunders deepsleep
+def sleep_bish(obj):                    # Slukker alt og går i 20 sekunders deepsleep
     print("sleeping, bish!")
     set_color(0, 0, 0)
     lcd.clear()
     e.send("sleep, bish!")
     deepsleep(20000)
     
-def handler(req_id, method, params):   # Skifter alarm til eller fra, hvis RPC kald fås fra Thingsboard
+def handler(req_id, method, params):    # Skifter alarm til eller fra, hvis RPC kald fås fra Thingsboard
     global alarm
     try:
         print(f'Response {req_id}: {method}, params {params}')
@@ -170,20 +171,22 @@ while True:
                     start_cal_hour = ticks_ms()                               # Genstarter 10-sekunders timer
             
             if lcd_display == 0:
-                if gps_data != None and gps_data != False:                      # Viser nuværende lat, lon, course og speed på LCD-skærm
+                if gps_data != None and gps_data != False:                    # Viser nuværende lat, lon, course og speed på LCD-skærm
                     lcd.clear()
-                    lcd.move_to (0, 0)
-                    lcd.putstr(f'Latitude: {str(gps_data[0])}')
                     lcd.move_to (0, 1)
-                    lcd.putstr(f'Longitude: {str(gps_data[1])}')
+                    lcd.putstr(f'Latitude: {str(gps_data[0])}')
                     lcd.move_to (0, 2)
-                    lcd.putstr(f"km/t: {str(round(gps_data[3],2))}")
-                    lcd.move_to (11, 2)
-                    lcd.putstr(f"Dir: {str(round(gps_data[2],1))}")
+                    lcd.putstr(f'Longitude: {str(gps_data[1])}')
+                    lcd.move_to (0, 0)
+                    lcd.putstr(f"{str(round(gps_data[3],2)) kph}")
                     lcd.move_to (0, 3)
-                    lcd.putstr(f'Temp: {str(temp)} °C')
+                    lcd.putstr(f"Dir: {str(round(gps_data[2],1))}")
+                    lcd.move_to (15, 0)
+                    lcd.putstr(f'{str(round(temp))}°C')
+                    lcd.move_to (11, 3)
+                    lcd.putstr(f'Battery: {str(round(battery_percentage))}%')
                     
-                else:                                                           # Fejlbesked, hvis der ikke er data fra GPS
+                else:                                                         # Fejlbesked, hvis der ikke er data fra GPS
                     lcd.clear()
                     lcd.move_to (0, 0)
                     lcd.putstr("Connecting...")
@@ -194,9 +197,11 @@ while True:
                     lcd.move_to (0,0)
                     lcd.putstr(f"BPM: {round(data_pulse)}")
                     lcd.move_to (0, 1)
-                    lcd.putstr(f"Kalorier/t: {round(calories_hour)}")
+                    lcd.putstr(f"Calories/h: {round(calories_hour)}")
                     lcd.move_to (0, 2)
-                    lcd.putstr(f'Kalorier brændt: {round(calories_burned)}')
+                    lcd.putstr(f'Calories burned: {round(calories_burned)}')
+                    lcd.move_to (11, 3)
+                    lcd.putstr(f'Battery: {str(round(battery_percentage))}%')
                 else:                                                                                 # Fejlbesked, hvis der ikke er data fra pulsmåler og gyroskop
                     lcd.clear()
                     lcd.move_to (0, 0)
@@ -218,7 +223,7 @@ while True:
                 park_accel = None
                 
             if acceleration.x <= 0.1 and acceleration.x >= -0.1 and parked != True:             # Tjekker om cyklen står stille
-                timer_deepsleep.init(period=180000, mode=Timer.ONE_SHOT, callback=sleep_bish)    # Starter timer til deepsleep
+                timer_deepsleep.init(period=180000, mode=Timer.ONE_SHOT, callback=sleep_bish)   # Starter timer til deepsleep
                 parked = True                                                                   # Fortæller programmet at cyklen står stille, så den ikke genstarter deepsleep-timer
             if acceleration.x < -0.1 or acceleration.x > 0.1:
                 timer_deepsleep.deinit()                                                        # Slukker timer til deepsleep
