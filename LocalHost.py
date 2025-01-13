@@ -18,6 +18,7 @@ from portExp_MCP23S08 import PortExp_MCP23S08
 
 wlan_sta = network.WLAN(network.STA_IF)   # Opretter WLAN objekt
 wlan_sta.active(True)                     # Aktivering af netværk
+wlan_sta.config(pm=wlan_sta.PM_NONE)
 
 wlan_mac = wlan_sta.config('mac')         # Visning af MAC-adresse
 print("MAC Address as bytestring:", wlan_mac)
@@ -26,7 +27,7 @@ print("MAC Address as Hex:", ubinascii.hexlify(wlan_mac).decode())
 e = espnow.ESPNow()                       # Opretter ESPNow objekt
 e.active(True)                            # Aktivering af ESPNow
 e.config(timeout_ms=-1)
-peer_pulse = b'\xc8.\x18\x15<\xfc'        # MAC adresse for pulsmeter
+peer_pulse = b'\xd4\x8a\xfch\x19\x0c'     # MAC adresse for pulsmeter
 peer_gyro = b'\xc8.\x18\x16\x9bl'         # MAC adresse for gyroskop
 e.add_peer(peer_pulse)                    # Tilføjer peer for pulsmeter
 e.add_peer(peer_gyro)                     # Tilføjer peer for gyroskop
@@ -41,6 +42,7 @@ park_accel = 1                            # Default value for park_accel
 parked = False                            # Default value for parked
 lcd_display = 0                           # Default value for lcd_display
 calories_burned = 0                       # Default value for calories_burned
+calories_hour = 0                         # Default value for calories_hour
 prev_cal = 0                              # Default value for prev_cal
 battery_capacity = 1800                   # mA i batteriet
 alarm = False                             # Default value for alarm
@@ -122,7 +124,6 @@ def handler(req_id, method, params):    # Skifter alarm til eller fra, hvis RPC 
 
 ### Programmer
 
-sleep(1)                                             # Buffer ved start af tur
 if acceleration.x > .2 or acceleration.y > .2:       # Tjekker om cyklen er i bevægelse
     print(acceleration.x, acceleration.y)
     lcd.move_to (0, 0)
@@ -155,12 +156,10 @@ while True:
             host, msg = e.recv()                                              # Opretter MAC-adresse fra sender som host og besked som msg
             
             if msg and host == b'\xc8.\x18\x15<\xfc':                         # Tager besked, hvis den kommer fra pulsmåler
-                print(host, msg)
                 msg_pulse = msg.decode('ascii')                               # Omdanner besked fra bytestring til string
                 data_pulse = float(msg_pulse)
                 
             if msg and host == b'\xc8.\x18\x16\x9bl':                         # Tager besked, hvis den kommer fra gyroskop
-                print(host, msg)
                 msg_gyro = msg.decode('ascii')                                # Omdanner besked fra bytestring til string
                 data_gyro = float(msg_gyro)
                 calories_burned += data_gyro                                  # Sammenlægger kalorier til kalorier forbrændt i alt
@@ -178,7 +177,7 @@ while True:
                     lcd.move_to (0, 2)
                     lcd.putstr(f'Longitude: {str(gps_data[1])}')
                     lcd.move_to (0, 0)
-                    lcd.putstr(f"{str(round(gps_data[3],2)) kph}")
+                    lcd.putstr(f'{str(round(gps_data[3],2))} kph')
                     lcd.move_to (0, 3)
                     lcd.putstr(f"Dir: {str(round(gps_data[2],1))}")
                     lcd.move_to (15, 0)
@@ -192,7 +191,7 @@ while True:
                     lcd.putstr("Connecting...")
                     
             if lcd_display == 50:
-                if data_pulse != None and data_pulse != 0 and data_gyro != None and data_gyro != 0:   # Viser nuværende data fra pulsmåler og gyroskop på LCD-skærm
+                if data_pulse != None and data_pulse != 0 and data_gyro != None and calories_hour != 0:   # Viser nuværende data fra pulsmåler og gyroskop på LCD-skærm
                     lcd.clear()
                     lcd.move_to (0,0)
                     lcd.putstr(f"BPM: {round(data_pulse)}")
@@ -252,4 +251,4 @@ while True:
     
     except KeyboardInterrupt:
         client.disconnect()
-        reset()
+        break
